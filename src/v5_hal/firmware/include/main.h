@@ -39,6 +39,7 @@
 // Raider Robotics library includes
 #include "lib-rr/nodes/NodeManager.h"
 #include "lib-rr/nodes/actuator_nodes/MotorNode.h"
+#include "lib-rr/nodes/actuator_nodes/ADIMotorNode.h"
 #include "lib-rr/nodes/sensor_nodes/ADIAnalogInNode.h"
 #include "lib-rr/nodes/sensor_nodes/ADIDigitalInNode.h"
 #include "lib-rr/nodes/sensor_nodes/ADIEncoderNode.h"
@@ -63,7 +64,7 @@
 // Project-specific includes
 #include "nodes/auton_nodes/AutonManagerNode.h"
 #include "auton/auton_actions/DeployAction.h"
-#include "nodes/TankDriveNode.h"
+#include "nodes/HolonomicDriveNode.h"
 #include "nodes/BackClawNode.h"
 #include "nodes/PrimaryClawNode.h"
 #include "nodes/LiftNode.h"

@@ -1,33 +1,26 @@
 #include "main.h"
 
-NodeManager* node_manager;
-
-AutonManagerNode* auton_manager_node;
+NodeManager* nodeManager;
 
 ControllerNode* controller;
 
-TankDriveNode* tank_drive_node;
-MotorNode* left_1_motor;
-MotorNode* left_2_motor;
-MotorNode* left_3_motor;
-MotorNode* left_4_motor;
-MotorNode* right_1_motor;
-MotorNode* right_2_motor;
-MotorNode* right_3_motor;
-MotorNode* right_4_motor;
+InertialSensorNode* inertialSensorNode;
 
-PrimaryClawNode* primary_claw;
-ADIDigitalOutNode* primary_claw_piston;
+ADIEncoderNode* xOdomEncoder;
+ADIEncoderNode* yOdomEncoder;
 
-BackClawNode* back_claw;
-ADIDigitalOutNode* back_claw_piston;
+OdometryNode* odomNode;
 
-LiftNode* lift_node;
-MotorNode* left_motor_lift;
-MotorNode* right_motor_lift;
-ADIDigitalInNode* bottom_limit_switch_lift;
-ADIDigitalInNode* top_limit_switch_lift;
-ADIAnalogInNode* potentiometer_lift;
+HolonomicDriveNode* holonomicDriveNode;
+MotorNode* leftFrontMotor;
+MotorNode* leftRearMotor;
+MotorNode* rightFrontMotor;
+MotorNode* rightRearMotor;
+
+ADIMotorNode* clawMotor;
+ADIMotorNode* liftMotor;
+
+ConnectionCheckerNode* connectionCheckerNode;
 
 // Declare all robot nodes here:
 
@@ -39,77 +32,53 @@ ADIAnalogInNode* potentiometer_lift;
  */
 void initialize() {
 	// Create the node manager
-	node_manager = new NodeManager(pros::millis);
+	nodeManager = new NodeManager(pros::millis);
 
 	// Initialize a static logger
-	Logger::giveNodeManager(node_manager);
+	Logger::giveNodeManager(nodeManager);
 
 	// Initialize all robot nodes here:
 
-	controller = new ControllerNode(node_manager, "controller");
+	controller = new ControllerNode(nodeManager, "controller");
 
-	left_1_motor = new MotorNode(node_manager, 5,"left_1_motor", false);
-	left_2_motor = new MotorNode(node_manager, 17,"left_2_motor", true);
-	left_3_motor = new MotorNode(node_manager, 2,"left_3_motor", true);
-	left_4_motor = new MotorNode(node_manager, 4,"left_4_motor", false);
-	right_1_motor = new MotorNode(node_manager, 1,"right_1_motor", true);
-	right_2_motor = new MotorNode(node_manager, 18,"right_2_motor", false);
-	right_3_motor = new MotorNode(node_manager, 16,"right_3_motor", false);
-	right_4_motor = new MotorNode(node_manager, 3,"right_4_motor", true);
+	inertialSensorNode = new InertialSensorNode(nodeManager, "inertialSensor", 19);
 
-	TankDriveNode::TankEightMotors tank_motors = {
-		left_1_motor,
-		left_2_motor,
-		left_3_motor,
-		left_4_motor,
-		right_1_motor,
-		right_2_motor,
-		right_3_motor,
-		right_4_motor
+	xOdomEncoder = new ADIEncoderNode(nodeManager, 'A', 'B', "xOdomEncoder", false);
+	yOdomEncoder = new ADIEncoderNode(nodeManager, 'C', 'D', "yOdomEncoder", false);
+
+	odomNode = new OdometryNode(nodeManager, "odometry", xOdomEncoder, yOdomEncoder, inertialSensorNode, OdometryNode::FOLLOWER);
+
+	leftFrontMotor = new MotorNode(nodeManager, 11,"leftFrontMotor", false);
+	leftRearMotor = new MotorNode(nodeManager, 12,"leftRearMotor", false);
+	rightFrontMotor = new MotorNode(nodeManager, 13,"rightFrontMotor", true);
+	rightRearMotor = new MotorNode(nodeManager, 14,"rightRearMotor", true);
+
+	HolonomicDriveNode::HolonomicFourMotors holonomicDriveMotors = {
+		leftFrontMotor,
+		leftRearMotor,
+		rightFrontMotor,
+		rightRearMotor
 	};
 
-	TankDriveKinematics::TankWheelLocations wheel_locations = {
-		Vector2d(0, 0),
-		Vector2d(0, 0)
+	EncoderConfig holonomicEncoderConfig = {
+		0, // Initial ticks
+		600, // Ticks per RPM
+		1.975 // Wheel diameter
 	};
 
-	EncoderConfig encoder_config = {
-		0,
-		900,
-		4.0
+	HolonomicDriveKinematics::HolonomicWheelLocations holonomicWheelLocations = {
+		Vector2d(-3.576, 3.576), // Left front
+		Vector2d(-3.576, -3.576), // Left rear
+		Vector2d(3.576, 3.576), // Right front
+		Vector2d(3.576, -3.576) // Right rear
 	};
 
-	TankDriveKinematics tank_kinematics(encoder_config, wheel_locations);
+	HolonomicDriveKinematics holonomicDriveKinematics(holonomicEncoderConfig, holonomicWheelLocations);
 
-	tank_drive_node = new TankDriveNode(node_manager, "tank_drive_node", controller, 
-        tank_motors, tank_kinematics
-	);
-	
-	left_motor_lift = new MotorNode(node_manager, 8, "left_motor_lift", false);
-	right_motor_lift = new MotorNode(node_manager, 19, "right_motor_lift", true);
-	bottom_limit_switch_lift = new ADIDigitalInNode(node_manager, 7, "bottom_limit_switch_lift");
-	top_limit_switch_lift = new ADIDigitalInNode(node_manager, 6, "top_limit_switch_lift");
-	potentiometer_lift = new ADIAnalogInNode(node_manager, 8, "potentiometer_lift", false);
-
-	lift_node = new LiftNode(node_manager, "lift_node", 
-        controller, left_motor_lift, 
-        right_motor_lift, bottom_limit_switch_lift, 
-		top_limit_switch_lift, potentiometer_lift
-	);
-
-	primary_claw_piston = new ADIDigitalOutNode(node_manager, "primary_claw_piston", 1, false);
-
-	primary_claw = new PrimaryClawNode(node_manager, "primary_claw", controller, primary_claw_piston);
-
-	back_claw_piston = new ADIDigitalOutNode(node_manager, "back_claw_piston", 2, false);
-
-	back_claw = new BackClawNode(node_manager, "secondary_claw", controller, back_claw_piston);
-
-	// Initialize the autonomous manager
-	auton_manager_node = new AutonManagerNode(node_manager, tank_drive_node, primary_claw);
+	holonomicDriveNode = new HolonomicDriveNode(nodeManager, "drivetrain", controller, inertialSensorNode, holonomicDriveMotors, holonomicDriveKinematics);
 
 	// Call the node manager to initialize all of the nodes above
-	node_manager->initialize();
+	nodeManager->initialize();
 }
 
 /**
@@ -119,7 +88,7 @@ void initialize() {
  */
 void disabled() {
 	while (pros::competition::is_disabled()) {
-		node_manager->m_handle->spinOnce();
+		nodeManager->m_handle->spinOnce();
 	}
 }
 
@@ -149,14 +118,14 @@ void competition_initialize() {
  */
 void autonomous() {
 	// Reset all nodes to default configuration
-	node_manager->reset();
+	nodeManager->reset();
 
 	// Reset the chosen autonomous and initialize
-	auton_manager_node->selected_auton->AutonInit();
+	// auton_manager_node->selected_auton->AutonInit();
 	
 	// Execute autonomous code
 	while (pros::competition::is_autonomous()) {
-		node_manager->executeAuton();
+		nodeManager->executeAuton();
 	}
 }
 
@@ -179,10 +148,10 @@ void autonomous() {
  */
 void opcontrol() {
 	// Reset all nodes to default configuration
-	node_manager->reset();
+	nodeManager->reset();
 	
 	// Execute teleop code
 	while (true) {
-		node_manager->executeTeleop();
+		nodeManager->executeTeleop();
 	}
 }
